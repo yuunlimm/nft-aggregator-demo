@@ -1,17 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Card, Tabs, Typography, Select, Spin, Alert, Avatar, Tag, Pagination, Row } from 'antd';
+import { Table, Card, Tabs, Typography, Select, Spin, Alert, Avatar, Tag, Pagination, Row, Col, Statistic, Progress, Empty, Divider } from 'antd';
 import { 
   fetchCollectionsByVolume, 
   fetchCollectionsBySales, 
-  fetchCollectionsByFloorPrice 
+  fetchCollectionsByFloorPrice,
+  fetchAggregatorStats
 } from '../lib/api';
 import { Link } from 'react-router-dom';
+import { 
+  ShopOutlined, 
+  AppstoreOutlined, 
+  FileImageOutlined, 
+  DatabaseOutlined 
+} from '@ant-design/icons';
+import { AggregatorStats } from '../types';
 
-const { Title } = Typography;
+const { Title, Text, Paragraph } = Typography;
 const { TabPane } = Tabs;
 const { Option } = Select;
 
+interface MarketplaceDataItem {
+  name: string;
+  value: number;
+  color: string;
+}
+
 const CollectionRankings: React.FC = () => {
+  // Collections data states
   const [volumeData, setVolumeData] = useState<any[]>([]);
   const [salesData, setSalesData] = useState<any[]>([]);
   const [floorPriceData, setFloorPriceData] = useState<any[]>([]);
@@ -20,11 +35,56 @@ const CollectionRankings: React.FC = () => {
   const [timePeriod, setTimePeriod] = useState<string>('24h');
   const [activeTab, setActiveTab] = useState<string>('volume');
   
+  // Aggregator stats states
+  const [stats, setStats] = useState<AggregatorStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState<boolean>(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
+  
   // Pagination states
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 10;
   const [totalItems, setTotalItems] = useState<number>(0);
 
+  // Colors for marketplace visualization
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658'];
+
+  // Format large numbers with commas
+  const formatNumber = (num: number): string => {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+  // Prepare data for marketplace distribution visualization
+  const getMarketplaceData = (): MarketplaceDataItem[] => {
+    if (!stats || !stats.marketplace_distribution) return [];
+    
+    return Object.entries(stats.marketplace_distribution).map(([name, percentage], index) => ({
+      name,
+      value: percentage,
+      color: COLORS[index % COLORS.length]
+    }));
+  };
+
+  // Load aggregator stats
+  useEffect(() => {
+    const loadStats = async () => {
+      setStatsLoading(true);
+      setStatsError(null);
+      
+      try {
+        const statsData = await fetchAggregatorStats();
+        setStats(statsData);
+      } catch (error) {
+        console.error('Error loading aggregator stats:', error);
+        setStatsError(`Failed to load statistics: ${error instanceof Error ? error.message : String(error)}`);
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    loadStats();
+  }, []);
+
+  // Load collection rankings data
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -252,8 +312,145 @@ const CollectionRankings: React.FC = () => {
     }
   ];
 
+  // Render aggregator stats section
+  const renderAggregatorStats = () => {
+    if (statsLoading) {
+      return (
+        <div style={{ textAlign: 'center', padding: '30px 0' }}>
+          <Spin size="large" />
+          <div style={{ marginTop: 16 }}>
+            <Text>Loading aggregator statistics...</Text>
+          </div>
+        </div>
+      );
+    }
+
+    if (statsError) {
+      return (
+        <Alert
+          message="Error Loading Statistics"
+          description={statsError}
+          type="error"
+          showIcon
+        />
+      );
+    }
+
+    if (!stats) {
+      return (
+        <Empty 
+          description="No aggregator statistics available" 
+          image={Empty.PRESENTED_IMAGE_SIMPLE} 
+        />
+      );
+    }
+
+    return (
+      <div className="aggregator-stats">
+        <div style={{ marginBottom: 16 }}>
+          <Title level={4}>NFT Aggregator Analytics</Title>
+          <Paragraph>
+            Comprehensive statistics about the NFT ecosystem across all integrated marketplaces.
+          </Paragraph>
+        </div>
+
+        {/* Main Statistics Row */}
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+          {stats.total_nfts !== undefined && (
+            <Col xs={24} sm={12} md={8}>
+              <Card>
+                <Statistic 
+                  title="Total NFTs" 
+                  value={stats.total_nfts} 
+                  formatter={(value) => formatNumber(value as number)}
+                  prefix={<FileImageOutlined />}
+                />
+                <Progress 
+                  percent={Math.min(100, (stats.total_nfts / 10000) * 100)} 
+                  showInfo={false} 
+                  status="active"
+                  strokeColor="#1890ff"
+                />
+              </Card>
+            </Col>
+          )}
+          {stats.total_collections !== undefined && (
+            <Col xs={24} sm={12} md={8}>
+              <Card>
+                <Statistic 
+                  title="Total Collections" 
+                  value={stats.total_collections} 
+                  formatter={(value) => formatNumber(value as number)}
+                  prefix={<AppstoreOutlined />}
+                />
+                <Progress 
+                  percent={Math.min(100, (stats.total_collections / 1000) * 100)} 
+                  showInfo={false} 
+                  status="active"
+                  strokeColor="#52c41a"
+                />
+              </Card>
+            </Col>
+          )}
+          <Col xs={24} sm={12} md={8}>
+            <Card>
+              <Statistic 
+                title="Active Listings" 
+                value={stats.total_active_listings || 0} 
+                formatter={(value) => formatNumber(value as number)}
+                prefix={<ShopOutlined />}
+              />
+              <Progress 
+                percent={Math.min(100, ((stats.total_active_listings || 0) / 5000) * 100)} 
+                showInfo={false} 
+                status="active"
+                strokeColor="#fa8c16"
+              />
+            </Card>
+          </Col>
+        </Row>
+
+        {/* Marketplace Tags */}
+        <Card title="Connected Marketplaces">
+          {stats.marketplace_distribution && Object.keys(stats.marketplace_distribution).length > 0 ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+              {getMarketplaceData().map((marketplace) => (
+                <div 
+                  key={marketplace.name}
+                  style={{ 
+                    padding: '12px 20px', 
+                    borderRadius: '4px', 
+                    background: marketplace.color, 
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <DatabaseOutlined />
+                  <span>{marketplace.name}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Empty 
+              description="No marketplace data available" 
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+            />
+          )}
+        </Card>
+
+        <Divider />
+      </div>
+    );
+  };
+
   return (
     <Card style={{ marginBottom: 24 }}>
+      {/* Aggregator Stats Section */}
+      {renderAggregatorStats()}
+
+      {/* Collection Rankings Section */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <Title level={3} style={{ margin: 0 }}>Collection Rankings</Title>
         <Select

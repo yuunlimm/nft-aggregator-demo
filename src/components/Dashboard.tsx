@@ -4,7 +4,7 @@ import { useWallet } from '@aptos-labs/wallet-adapter-react';
 import { fetchNFTs, fetchMarketplaceConfigs, fetchAggregatorStats, fetchActiveListings, invalidateListingsCache } from '../lib/api';
 import { NFT, MarketplaceConfig, AggregatorStats } from '../types';
 import NFTCard from './NFTCard';
-import { ShopOutlined, WalletOutlined, AppstoreOutlined, PieChartOutlined, TrophyOutlined, InfoCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import { ShopOutlined, WalletOutlined, AppstoreOutlined, PieChartOutlined, InfoCircleOutlined, ReloadOutlined, TrophyOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AggregatorStatsTab from './AggregatorStatsTab';
 import CollectionRankings from './CollectionRankings';
@@ -344,7 +344,7 @@ const Dashboard: React.FC = () => {
                   title="Collections" 
                   value={stats?.total_collections || 0} 
                   loading={statsLoading}
-                  prefix={<TrophyOutlined />}
+                  prefix={<AppstoreOutlined />}
                 />
               </Card>
             </Col>
@@ -614,18 +614,10 @@ const Dashboard: React.FC = () => {
           </div>
         </TabPane>
 
-        {/* Stats tab */}
+        {/* Analytics tab */}
         <TabPane 
-          tab={<span><PieChartOutlined />Analytics</span>} 
-          key="stats"
-        >
-          <AggregatorStatsTab stats={stats} loading={statsLoading} error={statsError} />
-        </TabPane>
-
-        {/* Rankings tab */}
-        <TabPane 
-          tab={<span><TrophyOutlined />Rankings</span>} 
-          key="rankings"
+          tab={<span><TrophyOutlined />Analytics</span>} 
+          key="analytics"
         >
           <CollectionRankings />
         </TabPane>

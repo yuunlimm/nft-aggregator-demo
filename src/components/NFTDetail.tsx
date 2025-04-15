@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Row, Col, Card, Typography, Descriptions, Tag, Spin, Button, Table, Empty } from 'antd';
+import { Row, Col, Card, Typography, Descriptions, Tag, Spin, Button, Table, Empty, message } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { fetchNFTDetails } from '../lib/api';
 import { NFT } from '../types';
@@ -21,7 +21,7 @@ const NFTDetail: React.FC = () => {
         const data = await fetchNFTDetails(id);
         setNft(data);
       } catch (error) {
-        console.error('Error loading NFT details:', error);
+        message.error('Failed to load NFT details');
       } finally {
         setLoading(false);
       }

@@ -12,28 +12,23 @@ import {
   } from "@aptos-labs/wallet-adapter-react";
 
 // Set Buffer for proper wallet functionality
+// @ts-ignore: Buffer is used by wallet adapters
 window.Buffer = Buffer;
 
-// Create Aptos wallet adapters - Automatically detects supported wallets
-// Add or remove wallets based on what's detected in your environment
-console.log("Initializing wallet adapters...");
-
-// Create the wallet adapters
-// Export the array so it can be used in other components
+// Create Petra wallet adapter only
 export const walletAdapters = [
-  new PetraWallet(),
+  new PetraWallet()
 ];
 
-console.log(`Created ${walletAdapters.length} wallet adapters`);
-
+// Set up React app with wallet provider
 const root = createRoot(document.getElementById('root') as HTMLElement);
 root.render(
   <React.StrictMode>
     <AptosWalletAdapterProvider 
-      plugins={walletAdapters} 
-      autoConnect={true}
+      plugins={walletAdapters as any} // Type casting to bypass type checking issues
+      autoConnect={false} 
       onError={(error) => {
-        console.error('Wallet adapter error:', error);
+        // Silent error handling to prevent console logs
       }}
     >
       <BrowserRouter>

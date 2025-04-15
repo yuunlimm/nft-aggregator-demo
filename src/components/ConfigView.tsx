@@ -20,7 +20,6 @@ const ConfigView: React.FC = () => {
         const data = await fetchMarketplaceConfigs();
         setMarketplaces(data);
       } catch (error) {
-        console.error('Error loading marketplace configs:', error);
         message.error('Failed to load marketplace configurations');
       } finally {
         setLoading(false);
@@ -47,7 +46,6 @@ const ConfigView: React.FC = () => {
       
       message.success(`Disconnected from ${marketplace.name}`);
     } catch (error) {
-      console.error('Error disconnecting marketplace:', error);
       message.error(`Failed to disconnect from ${marketplace.name}`);
     }
   };
@@ -67,7 +65,6 @@ const ConfigView: React.FC = () => {
       message.success(`Connected to ${selectedMarketplace.name}`);
       setIsModalVisible(false);
     } catch (error) {
-      console.error('Error connecting marketplace:', error);
       message.error(`Failed to connect to ${selectedMarketplace.name}`);
     } finally {
       setConnectLoading(false);

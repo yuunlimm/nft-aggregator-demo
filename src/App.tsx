@@ -8,6 +8,7 @@ import Dashboard from './components/Dashboard';
 import ConfigView from './components/ConfigView';
 import NFTDetail from './components/NFTDetail';
 import CustomWalletConnector from './components/CustomWalletConnector';
+import Analytics from './components/Analytics';
 
 const { Header, Content, Footer } = Layout;
 
@@ -45,14 +46,6 @@ const App: React.FC = () => {
 
   // Check if wallet adapters are available
   useEffect(() => {
-    console.log("Wallet state:", { 
-      connected, 
-      walletsAvailable: wallets.length,
-      walletNames: wallets.map((w: any) => w.name),
-      isLoading,
-      connecting
-    });
-    
     // Show guide if no wallets are detected after a short delay
     const timer = setTimeout(() => {
       if (wallets.length === 0 && !isLoading) {
@@ -86,6 +79,7 @@ const App: React.FC = () => {
 
   const menuItems = [
     { key: '/', label: <Link to="/">Dashboard</Link> },
+    { key: '/analytics', label: <Link to="/analytics">Analytics</Link> },
     { key: '/config', label: <Link to="/config">Marketplace Config</Link> },
   ];
 
