@@ -104,13 +104,14 @@ export class NFTService {
   async getBestImageUrl(cdnAssetUris: any, tokenName: string = 'NFT', token_uri?: string): Promise<string> {
     if (!cdnAssetUris) return '';
     
-    // First try the CDN image URI if available
+    // First try the CDN image URI if available (second priority)
     if (cdnAssetUris.cdn_image_uri) {
       return cdnAssetUris.cdn_image_uri;
     }
     
-    // Then try raw image URI
+    // Then try raw image URI if we didn't already handle it in the special cases
     if (cdnAssetUris.raw_image_uri) {
+      // Convert IPFS URL if needed
       const imageUrl = this.convertIpfsUrl(cdnAssetUris.raw_image_uri);
       
       // Check if it's an image or video
@@ -125,42 +126,87 @@ export class NFTService {
         return imageUrl;
       }
       
-      // If no known extension, still try to use it
+      // If we got here but raw_image_uri doesn't end with a known extension, 
+      // we'll still try to use it - it might be an image without a proper extension
       return imageUrl;
     }
     
-    // Then try CDN animation URI
+    // Then try CDN animation URI (might be a video but better than nothing)
     if (cdnAssetUris.cdn_animation_uri) {
       return cdnAssetUris.cdn_animation_uri;
     }
     
     // Then try raw animation URI
     if (cdnAssetUris.raw_animation_uri) {
-      return this.convertIpfsUrl(cdnAssetUris.raw_animation_uri);
+      const animUrl = this.convertIpfsUrl(cdnAssetUris.raw_animation_uri);
+      return animUrl;
     }
     
-    // Then try asset URI for image files
+    // Then try asset URI (might be a JSON file, but some platforms use it for direct image links)
     if (cdnAssetUris.asset_uri) {
       const uri = cdnAssetUris.asset_uri.toLowerCase();
       if (uri.endsWith('.jpg') || uri.endsWith('.jpeg') || uri.endsWith('.png') || 
           uri.endsWith('.gif') || uri.endsWith('.webp') || uri.endsWith('.svg')) {
-        return this.convertIpfsUrl(cdnAssetUris.asset_uri);
+        const assetUrl = this.convertIpfsUrl(cdnAssetUris.asset_uri);
+        return assetUrl;
       }
     }
     
-    // Try to extract from JSON metadata if available
+    // If cdn_json_uri exists, try to fetch it and extract the image URL
     if (cdnAssetUris.cdn_json_uri) {
       try {
+        // Only attempt to fetch if the URL starts with http/https
+        if (!cdnAssetUris.cdn_json_uri.startsWith('http')) {
+          return '';
+        }
+        
         const response = await fetch(cdnAssetUris.cdn_json_uri, {
           method: 'GET',
           headers: { 'Accept': 'application/json' },
-          cache: 'no-cache'
+          cache: 'no-cache' // Avoid cache issues
         });
-        
         if (response.ok) {
           const metadata = await response.json();
           
-          // Check for various image fields
+          if (metadata.image) {
+            return this.convertIpfsUrl(metadata.image);
+          }
+          // Look for standard NFT metadata fields that might contain an image
+          if (metadata.image_url) {
+            return this.convertIpfsUrl(metadata.image_url);
+          }
+          if (metadata.imageUrl) {
+            return this.convertIpfsUrl(metadata.imageUrl);
+          }
+          if (metadata.animation_url) {
+            return this.convertIpfsUrl(metadata.animation_url);
+          }
+          if (metadata.animationUrl) {
+            return this.convertIpfsUrl(metadata.animationUrl);
+          }
+        }
+      } catch (error) {
+        // Silently handle errors
+      }
+    }
+    
+    // If asset_uri points to a JSON file but we haven't tried it yet
+    if (cdnAssetUris.asset_uri && !cdnAssetUris.cdn_json_uri && 
+        cdnAssetUris.asset_uri.toLowerCase().endsWith('.json')) {
+      try {
+        // Only attempt to fetch if the URL starts with http/https
+        const convertedUrl = this.convertIpfsUrl(cdnAssetUris.asset_uri);
+        if (!convertedUrl.startsWith('http')) {
+          return '';
+        }
+        
+        const response = await fetch(convertedUrl, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+          cache: 'no-cache' // Avoid cache issues
+        });
+        if (response.ok) {
+          const metadata = await response.json();
           if (metadata.image) {
             return this.convertIpfsUrl(metadata.image);
           }
@@ -178,11 +224,57 @@ export class NFTService {
           }
         }
       } catch (error) {
-        console.error(`Error fetching JSON metadata from ${cdnAssetUris.cdn_json_uri}:`, error);
+        // Silently handle errors
       }
     }
     
-    // If no suitable image found, return empty string
+    // If token_uri exists and we haven't explored it yet
+    if (token_uri && (!cdnAssetUris.asset_uri || !cdnAssetUris.cdn_json_uri)) {
+      try {
+        const tokenUri = this.convertIpfsUrl(token_uri);
+        
+        // Only attempt to fetch if the URL starts with http/https
+        if (!tokenUri.startsWith('http')) {
+          return '';
+        }
+        
+        const response = await fetch(tokenUri, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+          cache: 'no-cache' // Avoid cache issues
+        });
+        if (response.ok) {
+          const metadata = await response.json();
+          if (metadata.image) {
+            return this.convertIpfsUrl(metadata.image);
+          }
+          if (metadata.image_url) {
+            return this.convertIpfsUrl(metadata.image_url);
+          }
+          if (metadata.imageUrl) {
+            return this.convertIpfsUrl(metadata.imageUrl);
+          }
+          if (metadata.animation_url) {
+            return this.convertIpfsUrl(metadata.animation_url);
+          }
+          if (metadata.animationUrl) {
+            return this.convertIpfsUrl(metadata.animationUrl);
+          }
+        }
+      } catch (error) {
+        // Silently handle errors
+      }
+    }
+    
+    // If asset_uri exists but isn't a JSON, try using it directly
+    if (cdnAssetUris.asset_uri && !cdnAssetUris.asset_uri.toLowerCase().endsWith('.json')) {
+      const assetUrl = this.convertIpfsUrl(cdnAssetUris.asset_uri);
+      // Only return if it's a valid HTTP URL
+      if (assetUrl.startsWith('http')) {
+        return assetUrl;
+      }
+    }
+    
     return '';
   }
 
@@ -385,11 +477,15 @@ export class NFTService {
           // Get the best available image URL using our helper
           let imageUrl = '';
           if (tokenData.cdn_asset_uris) {
-            imageUrl = await this.getBestImageUrl(
-              tokenData.cdn_asset_uris, 
-              listing.token_name || tokenData.token_name,
-              tokenData.token_uri
-            );
+            try {
+              imageUrl = await this.getBestImageUrl(
+                tokenData.cdn_asset_uris, 
+                listing.token_name || tokenData.token_name,
+                tokenData.token_uri
+              );
+            } catch (error) {
+              // If image URL fetching fails, continue with a placeholder
+            }
           }
           
           // If we don't have any usable URL, generate a placeholder
@@ -516,29 +612,91 @@ export class NFTService {
    */
   async fetchNFTDetails(nftId: string): Promise<NFT | null> {
     try {
-      // Since we don't have actual API access, return a mock NFT
-      const mockNFT: NFT = {
-        id: nftId,
-        name: `NFT #${nftId}`,
-        description: 'This is a mock NFT for demonstration purposes.',
-        image_url: `https://placehold.co/500x500/eee/999?text=NFT%20${nftId}`,
-        marketplace: 'Demo Marketplace',
-        collection_name: 'Demo Collection',
-        creator_address: '0x123',
-        owner_address: '0x456',
-        price: {
-          amount: 10,
-          currency: 'APT',
-        },
-        token_properties: {},
-        created_at: new Date().toISOString(),
-        listing_id: '',
-        collection_id: '',
-        token_uri: '',
-        hasCompleteMetadata: true
-      };
+      const query = `
+        query GetNFTDetailsByTokenId {
+          current_token_datas_v2(where: {token_data_id: {_eq: "${nftId}"}}) {
+            token_data_id
+            token_name
+            token_uri
+            description
+            token_properties
+            token_standard
+            collection_id
+            supply
+            maximum
+            last_transaction_timestamp
+            cdn_asset_uris {
+              cdn_image_uri
+              asset_uri
+              cdn_animation_uri
+              raw_animation_uri
+              raw_image_uri
+              cdn_json_uri
+            }
+          }
+          current_nft_marketplace_listings(where: {token_data_id: {_eq: "${nftId}"}, is_deleted: {_eq: false}}, limit: 1) {
+            listing_id
+            price
+            marketplace
+            seller
+            last_transaction_timestamp
+            collection_data {
+              collection_name
+            }
+          }
+        }
+      `;
       
-      return mockNFT;
+      const response = await this.client.queryGraphQL<any>(query, {}, this.client.getNftIndexerEndpoint());
+      
+      if (response && response.current_token_datas_v2 && response.current_token_datas_v2.length > 0) {
+        const tokenData = response.current_token_datas_v2[0];
+        const listing = response.current_nft_marketplace_listings?.[0];
+        const collectionName = listing?.collection_data?.collection_name || '';
+        
+        // Get the best image URL
+        let imageUrl = '';
+        if (tokenData.cdn_asset_uris) {
+          try {
+            imageUrl = await this.getBestImageUrl(
+              tokenData.cdn_asset_uris,
+              tokenData.token_name || 'NFT',
+              tokenData.token_uri
+            );
+          } catch (error) {
+            // If image URL fetching fails, continue with a placeholder
+          }
+        }
+        
+        // Use placeholder if no image found
+        if (!imageUrl) {
+          const placeholderName = encodeURIComponent(tokenData.token_name || 'NFT');
+          imageUrl = `https://placehold.co/500x500/eee/999?text=${placeholderName}`;
+        }
+        
+        return {
+          id: tokenData.token_data_id,
+          name: tokenData.token_name || 'Unnamed NFT',
+          description: tokenData.description || '',
+          image_url: imageUrl,
+          marketplace: this.formatMarketplaceName(listing ? listing.marketplace : ''),
+          collection_name: collectionName,
+          creator_address: tokenData.creator_address || '',
+          owner_address: listing ? listing.seller : '',
+          price: listing ? {
+            amount: this.formatAPTAmount(listing.price),
+            currency: 'APT'
+          } : undefined,
+          token_properties: this.parseTokenProperties(tokenData.token_properties),
+          created_at: new Date(tokenData.last_transaction_timestamp).toISOString(),
+          listing_id: listing ? listing.listing_id : '',
+          collection_id: tokenData.collection_id,
+          token_uri: tokenData.token_uri,
+          hasCompleteMetadata: !!(tokenData.token_name && tokenData.description && imageUrl)
+        };
+      }
+      
+      return null;
     } catch (error) {
       console.error('Error fetching NFT details:', error);
       return null;

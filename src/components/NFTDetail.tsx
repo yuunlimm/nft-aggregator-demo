@@ -8,24 +8,21 @@ import { NFT } from '../types';
 const { Title, Text } = Typography;
 
 const NFTDetail: React.FC = () => {
-  const { token_data_id } = useParams<{ token_data_id: string }>();
+  const { id } = useParams<{ id: string }>();
   const [nft, setNft] = useState<NFT | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadNFTDetails = async () => {
-      if (!token_data_id) return;
+      if (!id) return;
       
       setLoading(true);
       try {
-        console.log(`Fetching NFT details for ID: ${token_data_id}`);
-        const data = await fetchNFTDetails(token_data_id);
+        const data = await fetchNFTDetails(id);
         
         if (data) {
-          console.log('NFT details fetched successfully:', data);
           setNft(data);
         } else {
-          console.error('NFT not found or returned null');
           message.error('NFT not found');
         }
       } catch (error) {
@@ -37,7 +34,7 @@ const NFTDetail: React.FC = () => {
     };
 
     loadNFTDetails();
-  }, [token_data_id]);
+  }, [id]);
 
   if (loading) {
     return (

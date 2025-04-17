@@ -92,7 +92,7 @@ function convertIpfsUrl(url: string): string {
  * Get the best available image URL from CDN asset URIs
  * Handles cases where cdn_image_uri is null but other fields are available
  */
-async function getBestImageUrl(cdnAssetUris: any, token_uri?: string): Promise<string> {
+async function getBestImageUrl(cdnAssetUris: any, token_name: string, token_uri?: string): Promise<string> {
   if (!cdnAssetUris) return '';
   
   // First try the CDN image URI if available (second priority)
@@ -246,25 +246,6 @@ async function getBestImageUrl(cdnAssetUris: any, token_uri?: string): Promise<s
   }
   
   return '';
-}
-
-/**
- * Process the NFT to get the correct image URL
- * Handles JSON metadata if necessary and converts IPFS URLs
- */
-async function processNFTImageUrl(nft: NFT): Promise<NFT> {
-  // If we already have a valid image_url, keep it
-  if (nft.image_url && !nft.image_url.includes('undefined')) {
-    return nft;
-  }
-  
-  // If no image_url is available, use a placeholder
-  if (!nft.image_url) {
-    const placeholderName = encodeURIComponent(nft.name || 'NFT');
-    nft.image_url = `https://placehold.co/500x500/eee/999?text=${placeholderName}`;
-  }
-  
-  return nft;
 }
 
 /**
@@ -455,17 +436,21 @@ export async function fetchActiveListings(params: {
         // Get the best available image URL using our helper
         let imageUrl = '';
         if (tokenData.cdn_asset_uris) {
-          imageUrl = await getBestImageUrl(
-            tokenData.cdn_asset_uris, 
-            listing.token_name || tokenData.token_name,
-            tokenData.token_uri
-          );
+          try {
+            imageUrl = await getBestImageUrl(
+              tokenData.cdn_asset_uris,
+              tokenData.token_name || 'NFT',
+              tokenData.token_uri
+            );
+          } catch (error) {
+            // If image URL fetching fails, continue without an image
+          }
         }
         
-        // If we don't have any usable URL, generate a placeholder
+        // If no image URL is available, use a placeholder
         if (!imageUrl) {
-          const placeholderId = listing.token_name || Math.random().toString(36).substring(7);
-          imageUrl = `https://placehold.co/500x500/eee/999?text=${encodeURIComponent(placeholderId)}`;
+          const placeholderName = encodeURIComponent(tokenData.token_name || 'NFT');
+          imageUrl = `https://placehold.co/500x500/eee/999?text=${placeholderName}`;
         }
         
         // Check if metadata is complete
@@ -624,7 +609,21 @@ export async function fetchNFTDetails(nftId: string): Promise<NFT | null> {
     // Get the best available image URL using our helper
     let imageUrl = '';
     if (tokenData.cdn_asset_uris) {
-      imageUrl = await getBestImageUrl(tokenData.cdn_asset_uris, tokenData.token_uri);
+      try {
+        imageUrl = await getBestImageUrl(
+          tokenData.cdn_asset_uris,
+          tokenData.token_name || 'NFT',
+          tokenData.token_uri
+        );
+      } catch (error) {
+        // If image URL fetching fails, continue without an image
+      }
+    }
+    
+    // If no image URL is available, use a placeholder
+    if (!imageUrl) {
+      const placeholderName = encodeURIComponent(tokenData.token_name || 'NFT');
+      imageUrl = `https://placehold.co/500x500/eee/999?text=${placeholderName}`;
     }
 
     return {
