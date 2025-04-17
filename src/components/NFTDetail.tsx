@@ -8,19 +8,28 @@ import { NFT } from '../types';
 const { Title, Text } = Typography;
 
 const NFTDetail: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { token_data_id } = useParams<{ token_data_id: string }>();
   const [nft, setNft] = useState<NFT | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadNFTDetails = async () => {
-      if (!id) return;
+      if (!token_data_id) return;
       
       setLoading(true);
       try {
-        const data = await fetchNFTDetails(id);
-        setNft(data);
+        console.log(`Fetching NFT details for ID: ${token_data_id}`);
+        const data = await fetchNFTDetails(token_data_id);
+        
+        if (data) {
+          console.log('NFT details fetched successfully:', data);
+          setNft(data);
+        } else {
+          console.error('NFT not found or returned null');
+          message.error('NFT not found');
+        }
       } catch (error) {
+        console.error('Failed to load NFT details:', error);
         message.error('Failed to load NFT details');
       } finally {
         setLoading(false);
@@ -28,7 +37,7 @@ const NFTDetail: React.FC = () => {
     };
 
     loadNFTDetails();
-  }, [id]);
+  }, [token_data_id]);
 
   if (loading) {
     return (
@@ -90,8 +99,7 @@ const NFTDetail: React.FC = () => {
             
             <Descriptions column={1} bordered style={{ marginTop: 16 }}>
               <Descriptions.Item label="Collection">{nft.collection_name}</Descriptions.Item>
-              <Descriptions.Item label="Creator">{nft.creator_address}</Descriptions.Item>
-              <Descriptions.Item label="Owner">{nft.owner_address}</Descriptions.Item>
+              <Descriptions.Item label="Seller">{nft.owner_address}</Descriptions.Item>
               {nft.price && (
                 <Descriptions.Item label="Price">
                   {`${nft.price.amount} ${nft.price.currency}`}
@@ -102,7 +110,7 @@ const NFTDetail: React.FC = () => {
                   {new Date(nft.last_sold_at).toLocaleString()}
                 </Descriptions.Item>
               )}
-              <Descriptions.Item label="Created">
+              <Descriptions.Item label="Listed">
                 {new Date(nft.created_at).toLocaleString()}
               </Descriptions.Item>
             </Descriptions>
