@@ -54,5 +54,13 @@ export interface AggregatorStats {
   total_marketplaces: number;
   total_value_usd?: number;
   total_active_listings?: number;
-  marketplace_distribution: Record<string, number>;
+}
+
+/**
+ * Options for collection ranking queries
+ */
+export interface CollectionRankingOptions {
+  timePeriod?: '1h' | '6h' | '24h' | '7d' | '30d';
+  limit?: number;
+  offset?: number;
 } 

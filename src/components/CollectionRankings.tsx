@@ -53,17 +53,6 @@ const CollectionRankings: React.FC = () => {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
 
-  // Prepare data for marketplace distribution visualization
-  const getMarketplaceData = (): MarketplaceDataItem[] => {
-    if (!stats || !stats.marketplace_distribution) return [];
-    
-    return Object.entries(stats.marketplace_distribution).map(([name, percentage], index) => ({
-      name,
-      value: percentage,
-      color: COLORS[index % COLORS.length]
-    }));
-  };
-
   // Load aggregator stats
   useEffect(() => {
     const loadStats = async () => {
@@ -200,7 +189,7 @@ const CollectionRankings: React.FC = () => {
           <Avatar 
             shape="square" 
             size={40} 
-            src={`https://via.placeholder.com/40?text=${encodeURIComponent(text.charAt(0))}`}
+            src={`https://placehold.co/40x40/eee/999?text=${encodeURIComponent(text.charAt(0))}`}
             style={{ marginRight: 12 }}
           />
           <Link to={`/collection/${record.collection_id}`}>
@@ -243,7 +232,7 @@ const CollectionRankings: React.FC = () => {
           <Avatar 
             shape="square" 
             size={40} 
-            src={`https://via.placeholder.com/40?text=${encodeURIComponent(text.charAt(0))}`}
+            src={`https://placehold.co/40x40/eee/999?text=${encodeURIComponent(text.charAt(0))}`}
             style={{ marginRight: 12 }}
           />
           <Link to={`/collection/${record.collection_id}`}>
@@ -286,7 +275,7 @@ const CollectionRankings: React.FC = () => {
           <Avatar 
             shape="square" 
             size={40} 
-            src={`https://via.placeholder.com/40?text=${encodeURIComponent(text.charAt(0))}`}
+            src={`https://placehold.co/40x40/eee/999?text=${encodeURIComponent(text.charAt(0))}`}
             style={{ marginRight: 12 }}
           />
           <Link to={`/collection/${record.collection_id}`}>
@@ -409,36 +398,6 @@ const CollectionRankings: React.FC = () => {
             </Card>
           </Col>
         </Row>
-
-        {/* Marketplace Tags */}
-        <Card title="Connected Marketplaces">
-          {stats.marketplace_distribution && Object.keys(stats.marketplace_distribution).length > 0 ? (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-              {getMarketplaceData().map((marketplace) => (
-                <div 
-                  key={marketplace.name}
-                  style={{ 
-                    padding: '12px 20px', 
-                    borderRadius: '4px', 
-                    background: marketplace.color, 
-                    color: 'white',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  <DatabaseOutlined />
-                  <span>{marketplace.name}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <Empty 
-              description="No marketplace data available" 
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-            />
-          )}
-        </Card>
 
         <Divider />
       </div>

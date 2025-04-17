@@ -1,46 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { Layout, Menu, Row, Col, Alert, message, Button, Space } from 'antd';
 import { Route, Routes, Link, useLocation } from 'react-router-dom';
-import { WalletSelector } from '@aptos-labs/wallet-adapter-ant-design';
 import '@aptos-labs/wallet-adapter-ant-design/dist/index.css';
 import { useWallet } from '@aptos-labs/wallet-adapter-react';
 import Dashboard from './components/Dashboard';
-import ConfigView from './components/ConfigView';
 import NFTDetail from './components/NFTDetail';
 import CustomWalletConnector from './components/CustomWalletConnector';
-import Analytics from './components/Analytics';
 
 const { Header, Content, Footer } = Layout;
 
-// Extended interface for wallet state to include properties that might not be in type definitions
-interface ExtendedWalletState {
-  account: any;
-  connected: boolean;
-  network: any;
-  wallet: any;
-  wallets: any[];
-  isLoading?: boolean;
-  connecting?: boolean;
-  disconnecting?: boolean;
-}
-
 const App: React.FC = () => {
   const location = useLocation();
-  // Cast the wallet state through unknown first to avoid TypeScript errors
-  const walletState = useWallet() as unknown as ExtendedWalletState;
-  
-  // Safely extract properties with defaults for potentially undefined ones
   const { 
     account, 
     connected, 
     network, 
     wallet,
-    wallets = [],
-    isLoading = false,
-    connecting = false,
-    disconnecting = false
-  } = walletState;
+    wallets = []
+  } = useWallet();
   
+  const [connecting, setConnecting] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
   const [walletStatus, setWalletStatus] = useState<string>('');
   const [showInstallGuide, setShowInstallGuide] = useState<boolean>(false);
 
@@ -48,19 +28,17 @@ const App: React.FC = () => {
   useEffect(() => {
     // Show guide if no wallets are detected after a short delay
     const timer = setTimeout(() => {
-      if (wallets.length === 0 && !isLoading) {
+      if (wallets.length === 0) {
         setShowInstallGuide(true);
       }
     }, 2000);
     
     return () => clearTimeout(timer);
-  }, [wallets, isLoading]);
+  }, [wallets]);
 
   // Monitor and report wallet status changes
   useEffect(() => {
-    if (isLoading) {
-      setWalletStatus('Initializing wallet adapters...');
-    } else if (connecting) {
+    if (connecting) {
       setWalletStatus('Connecting...');
     } else if (disconnecting) {
       setWalletStatus('Disconnecting...');
@@ -75,12 +53,10 @@ const App: React.FC = () => {
     } else {
       setWalletStatus('');
     }
-  }, [isLoading, connecting, disconnecting, connected, account, wallet, wallets]);
+  }, [connecting, disconnecting, connected, account, wallet, wallets]);
 
   const menuItems = [
     { key: '/', label: <Link to="/">Dashboard</Link> },
-    { key: '/analytics', label: <Link to="/analytics">Analytics</Link> },
-    { key: '/config', label: <Link to="/config">Marketplace Config</Link> },
   ];
 
   // Install wallet guide component
@@ -121,7 +97,6 @@ const App: React.FC = () => {
           />
         </div>
         <div>
-          {/* Use our custom wallet connector instead of WalletSelector */}
           <CustomWalletConnector />
         </div>
       </Header>
@@ -160,7 +135,6 @@ const App: React.FC = () => {
         <div className="site-layout-content" style={{ margin: '24px 0' }}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/config" element={<ConfigView />} />
             <Route path="/nft/:id" element={<NFTDetail />} />
           </Routes>
         </div>
